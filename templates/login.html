@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <main class="card">
+      <h2>halaman ini kusus admin/guru</h2>
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash">{{ messages[0] }}</div>
+        {% endif %}
+      {% endwith %}
+      <form method="post">
+        <input type="password" name="pass" placeholder="Password admin" required>
+        <button class="btn" type="submit">Login</button>
+      </form>
+      <footer class="foot">Dibuat oleh <strong>Riky Ernanto</strong></footer>
+    </main>
+  </div>
+</body>
+</html>

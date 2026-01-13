@@ -1,0 +1,28 @@
+:root{
+  --accent:#ff7eb6;
+  --card-bg: rgba(255,255,255,0.06);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:Nunito,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  background: linear-gradient(180deg,#fff6fb 0%, #fff 100%), url('https://i.imgur.com/6YVQwgn.png');
+  background-size:cover; min-height:100vh; color:#222;
+  display:flex; align-items:stretch; justify-content:center; padding:20px;
+}
+.wrap{display:flex; gap:20px; width:100%; max-width:1100px; align-items:flex-start;}
+.card{flex:1; background:var(--card-bg); padding:18px; border-radius:14px; backdrop-filter:blur(6px) saturate(120%); box-shadow:0 8px 30px rgba(0,0,0,0.08)}
+.head h1{margin:0;font-family:'Zen Dots',cursive;font-size:28px}
+.lead{margin:6px 0 12px;color:#444}
+.form input, .form select{width:100%;padding:12px;margin:8px 0;border-radius:10px;border:1px solid rgba(0,0,0,0.06)}
+.btn{display:inline-block;padding:10px 14px;border-radius:10px;background:linear-gradient(90deg,var(--accent),#ffd27a);border:none;color:#fff;font-weight:700;cursor:pointer}
+.btn.small{padding:8px 10px;font-size:13px}
+.flash{background:#fff1f6;padding:8px;border-radius:8px;color:#b8005a;margin-bottom:8px}
+.foot{margin-top:12px;font-size:13px;color:#333;opacity:0.9;text-align:center}
+.note{width:280px;flex:0 0 280px}
+.note h3{margin-top:0}
+.table{width:100%;border-collapse:collapse;margin-top:10px}
+.table th,.table td{padding:8px;border-bottom:1px solid rgba(0,0,0,0.06);font-size:13px;text-align:left}
+@media(max-width:880px){
+  .wrap{flex-direction:column}
+  .note{width:100%}
+}

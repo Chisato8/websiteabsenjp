@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Halaman Tidak Ditemukan</title>
+
+    <!-- Pakai font Zen Dots + Nunito biar sesuai style -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Zen+Dots&display=swap" rel="stylesheet">
+
+    <style>
+        :root{
+            --accent:#ff7eb6;
+            --card-bg: rgba(255,255,255,0.06);
+        }
+        *{box-sizing:border-box}
+        body{
+            margin:0;font-family:Nunito,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+            background: linear-gradient(180deg,#fff6fb 0%, #fff 100%), url('https://i.imgur.com/6YVQwgn.png');
+            background-size:cover; min-height:100vh; color:#222;
+            display:flex; align-items:center; justify-content:center; padding:20px;
+        }
+        .card{
+            background:var(--card-bg);
+            padding:28px;
+            border-radius:18px;
+            backdrop-filter:blur(6px) saturate(120%);
+            box-shadow:0 8px 30px rgba(0,0,0,0.08);
+            max-width:420px; width:100%;
+            text-align:center;
+            animation:pop .4s ease;
+        }
+        @keyframes pop{
+            0%{transform:scale(.85);opacity:0}
+            100%{transform:scale(1);opacity:1}
+        }
+        h1{
+            font-family:'Zen Dots',cursive;
+            margin-top:0;
+            font-size:32px;
+            color:#b8005a;
+        }
+        p{color:#444;line-height:1.5}
+        .btn{
+            display:inline-block;padding:12px 18px;border-radius:12px;
+            background:linear-gradient(90deg,var(--accent),#ffd27a);
+            border:none;color:#fff;font-weight:700;cursor:pointer;
+            text-decoration:none;
+            margin-top:14px; font-size:15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>404 — Nyasar woi!</h1>
+        <p>Halaman yang kamu cari gak ada, atau sudah pindah tempat 😡<br>
+        Balik sana ke halaman utama, jangan keluyuran sembarangan 😤</p>
+
+        <a href="/" class="btn">Kembali ke Beranda</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Absensi Eskul Jepang — Riky Ernanto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&family=Zen+Dots&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <main class="card">
+      <header class="head">
+        <h1>🌸 ABSENSI ESKUL JEPANG SMK 1 CIBATU</h1>
+        <p class="lead">Isi absen dengan sopan, jangan spam pastikan gunakan 5S nya👀</p>
+      </header>
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash">{{ messages[0] }}</div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" class="form">
+        <input type="text" name="nama" placeholder="Nama (contoh: Riky Ernanto)" required>
+        <input type="text" name="kelas" placeholder="Kelas (contoh: TKJ 2-X)" required>
+        <select name="status" aria-label="status">
+          <option value="Hadir">Hadir</option>
+          <option value="Izin">Izin</option>
+          <option value="Sakit">Sakit</option>
+        </select>
+        <!-- honeypot -->
+        <input type="text" name="hp_field" style="display:none">
+        <button class="btn" type="submit">Kirim Absensi</button>
+      </form>
+
+      <footer class="foot">Dibuat oleh <strong>Riky Ernanto</strong> • Eskul Jepang</footer>
+    </main>
+
+    <aside class="note">
+      <h3>Be the best</h3>
+      <p><code></code> &amp; <code></code>.</p>
+      <p>Admin: buka <a href="/login">/login</a> lalu ekspor CSV/ZIP.</p>
+    </aside>
+  </div>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Absensi</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="wrap admin-wrap">
+    <main class="card">
+      <header><h2>Admin — Absensi</h2></header>
+
+      <div class="actions">
+        <a class="btn small" href="/export-csv">Export CSV</a>
+        <a class="btn small" href="/export-zip">Export ZIP</a>
+        <a class="btn small" href="/download-db">Download DB</a>
+        <a class="btn small" href="/logout">Logout</a>
+      </div>
+
+      <!-- MONITORING (ditambahkan) -->
+      <div class="monitor" style="margin-bottom:12px;padding:10px;border-radius:8px;background:#101318;color:#d7dde3">
+        <strong>Monitoring:</strong>
+        &nbsp; CPU: <span id="cpu">--</span> |
+        RAM: <span id="ram">--</span> |
+        Ping: <span id="ping">--</span> ms
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama</th>
+            <th>Kelas</th>
+            <th>Status</th>
+            <th>Waktu</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+
+        <!-- KOSONGKAN. Semua data diisi realtime -->
+        <tbody id="table-body"></tbody>
+      </table>
+
+    </main>
+  </div>
+
+  <!-- Ambil data lama -->
+  <script>
+    const tbody = document.getElementById("table-body");
+
+    fetch("/get-all")
+      .then(r => r.json())
+      .then(res => {
+        // data sudah ordered DESC di server
+        res.data.forEach(row => {
+          let tr = `
+            <tr>
+              <td>${row.id}</td>
+              <td>${row.nama}</td>
+              <td>${row.kelas}</td>
+              <td>${row.status}</td>
+              <td>${row.waktu}</td>
+              <td>${row.ip}</td>
+            </tr>
+          `;
+          tbody.insertAdjacentHTML("beforeend", tr);
+        });
+      }).catch(err=>{
+        console.error("Gagal ambil data lama:", err);
+      });
+  </script>
+
+  <!-- Realtime (SSE) -->
+  <script>
+    const evtSource = new EventSource("/stream");
+
+    evtSource.onmessage = function(e) {
+      try {
+        const obj = JSON.parse(e.data);
+        let tr = `
+          <tr>
+            <td>${obj.id}</td>
+            <td>${obj.nama}</td>
+            <td>${obj.kelas}</td>
+            <td>${obj.status}</td>
+            <td>${obj.waktu}</td>
+            <td>${obj.ip}</td>
+          </tr>
+        `;
+        tbody.insertAdjacentHTML("afterbegin", tr);
+      } catch (ex) {
+        console.error("Parse SSE error:", ex, e.data);
+      }
+    };
+  </script>
+
+  <!-- Monitoring -->
+  <script>
+    function updateMonitor() {
+      fetch("/monitor").then(r=>r.json()).then(m=>{
+        document.getElementById("cpu").textContent = m.cpu + "%";
+        document.getElementById("ram").textContent = m.ram + "%";
+        document.getElementById("ping").textContent = m.ping;
+      }).catch(e=>{
+        console.error("monitor err", e);
+      });
+    }
+    updateMonitor();
+    setInterval(updateMonitor, 2500);
+  </script>
+
+</body>
+</html>

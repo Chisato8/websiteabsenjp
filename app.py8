@@ -1,0 +1,261 @@
+import os, time, csv, sqlite3, zipfile, io, secrets, requests, subprocess, json
+from flask import Flask, render_template, request, redirect, url_for, send_file, flash, session, abort, jsonify
+
+# ===================================================
+# OPTIONAL MONITORING
+# ===================================================
+try:
+    import psutil
+except:
+    psutil = None
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET", secrets.token_hex(16))
+
+DB = "absensi.db"
+ADMIN_PASS = os.environ.get("ADMIN_PASS", "rikyganteng")
+
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+
+# ===================================================
+# DATABASE INIT + ANTI DUPLICATE
+# ===================================================
+def init_db():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nama TEXT,
+            kelas TEXT,
+            status TEXT,
+            waktu TEXT,
+            ip TEXT
+        )
+    """)
+    c.execute("SELECT name FROM sqlite_master WHERE type='trigger' AND name='trg_no_duplicate_same_day'")
+    if not c.fetchone():
+        c.execute("""
+        CREATE TRIGGER trg_no_duplicate_same_day
+        BEFORE INSERT ON attendance
+        WHEN (SELECT COUNT(*) FROM attendance WHERE nama=NEW.nama AND date(waktu)=date(NEW.waktu)) > 0
+        BEGIN
+            SELECT RAISE(ABORT, 'duplicate');
+        END;
+        """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# ===================================================
+# RATE LIMIT ABSENSI
+# ===================================================
+RATE = {}
+MIN_INTERVAL = 5
+
+# ===================================================
+# ANTI BRUTE FORCE LOGIN
+# ===================================================
+LOGIN_ATTEMPTS = {}
+MAX_LOGIN_ATTEMPTS = 5
+LOCK_TIME = 600  # 10 menit
+
+def is_login_locked(ip):
+    data = LOGIN_ATTEMPTS.get(ip)
+    if not data:
+        return False
+    attempts, lock_until = data
+    return lock_until and time.time() < lock_until
+
+def register_failed_login(ip):
+    attempts, lock_until = LOGIN_ATTEMPTS.get(ip, (0, None))
+    attempts += 1
+    if attempts >= MAX_LOGIN_ATTEMPTS:
+        lock_until = time.time() + LOCK_TIME
+        send_telegram_message(f"[SECURITY] IP {ip} terkunci karena brute-force login")
+    LOGIN_ATTEMPTS[ip] = (attempts, lock_until)
+
+def reset_login_attempts(ip):
+    LOGIN_ATTEMPTS.pop(ip, None)
+
+# ===================================================
+# TELEGRAM
+# ===================================================
+def send_telegram_message(text):
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+            data={"chat_id": TELEGRAM_CHAT_ID, "text": text},
+            timeout=5
+        )
+    except:
+        pass
+
+# ===================================================
+# HALAMAN ABSENSI
+# ===================================================
+@app.route("/", methods=["GET","POST"])
+def index():
+    ip = request.remote_addr or "unknown"
+    now = time.time()
+
+    if request.method == "POST":
+        if now - RATE.get(ip, 0) < MIN_INTERVAL:
+            flash("Terlalu cepat, tunggu sebentar.")
+            return redirect(url_for("index"))
+        RATE[ip] = now
+
+        if request.form.get("hp_field"):
+            return ("", 204)
+
+        nama = request.form.get("nama","").strip()
+        kelas = request.form.get("kelas","").strip()
+        status = request.form.get("status","").strip()
+        if not nama:
+            flash("Nama wajib diisi.")
+            return redirect(url_for("index"))
+
+        waktu = time.strftime("%Y-%m-%d %H:%M:%S")
+        conn = sqlite3.connect(DB)
+        c = conn.cursor()
+        try:
+            c.execute("INSERT INTO attendance VALUES (NULL,?,?,?,?,?)",
+                      (nama,kelas,status,waktu,ip))
+            conn.commit()
+            flash("Absensi berhasil!")
+            if status.lower() in ("sakit","izin","alpa","tidak hadir"):
+                send_telegram_message(f"[ABSENSI] {nama} | {kelas} | {status}")
+        except sqlite3.IntegrityError:
+            flash("Kamu sudah absen hari ini.")
+        except:
+            flash("Gagal menyimpan data.")
+        conn.close()
+
+        return redirect(url_for("index"))
+
+    return render_template("index.html")
+
+# ===================================================
+# LOGIN ADMIN (ANTI BRUTE FORCE)
+# ===================================================
+@app.route("/login", methods=["GET","POST"])
+def login():
+    ip = request.remote_addr or "unknown"
+
+    if is_login_locked(ip):
+        flash("Login dikunci sementara (anti brute-force).")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        pw = request.form.get("pass","")
+        if pw == ADMIN_PASS:
+            session["admin"] = True
+            reset_login_attempts(ip)
+            return redirect(url_for("admin"))
+        else:
+            register_failed_login(ip)
+            time.sleep(1)
+            flash("Password salah")
+            return redirect(url_for("login"))
+
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
+
+def require_admin():
+    if not session.get("admin"):
+        abort(403)
+
+# ===================================================
+# ADMIN PANEL
+# ===================================================
+@app.route("/admin")
+def admin():
+    require_admin()
+    return render_template("admin.html")
+
+@app.route("/get-all")
+def get_all():
+    require_admin()
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    rows = c.execute("SELECT * FROM attendance ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify([{
+        "id":r[0],"nama":r[1],"kelas":r[2],
+        "status":r[3],"waktu":r[4],"ip":r[5]
+    } for r in rows])
+
+# ===================================================
+# REALTIME STREAM
+# ===================================================
+@app.route("/stream")
+def stream():
+    def gen():
+        last = 0
+        while True:
+            conn = sqlite3.connect(DB)
+            c = conn.cursor()
+            row = c.execute("SELECT * FROM attendance ORDER BY id DESC LIMIT 1").fetchone()
+            conn.close()
+            if row and row[0] != last:
+                last = row[0]
+                yield f"data:{json.dumps({'nama':row[1],'kelas':row[2],'status':row[3],'waktu':row[4]})}\n\n"
+            time.sleep(1)
+    return app.response_class(gen(), mimetype="text/event-stream")
+
+# ===================================================
+# MONITOR
+# ===================================================
+@app.route("/monitor")
+def monitor():
+    require_admin()
+    return jsonify({
+        "cpu": psutil.cpu_percent() if psutil else 0,
+        "ram": psutil.virtual_memory().percent if psutil else 0
+    })
+
+# ===================================================
+# EXPORT
+# ===================================================
+@app.route("/export-csv")
+def export_csv():
+    require_admin()
+    mem = io.StringIO()
+    w = csv.writer(mem)
+    w.writerow(["ID","Nama","Kelas","Status","Waktu","IP"])
+    conn = sqlite3.connect(DB)
+    for r in conn.execute("SELECT * FROM attendance"):
+        w.writerow(r)
+    conn.close()
+    bio = io.BytesIO(mem.getvalue().encode())
+    bio.seek(0)
+    return send_file(bio, as_attachment=True, download_name="absensi.csv")
+
+# ===================================================
+# DOWNLOAD DB
+# ===================================================
+@app.route("/download-db")
+def download_db():
+    require_admin()
+    return send_file(DB, as_attachment=True)
+
+# ===================================================
+# 404
+# ===================================================
+@app.errorhandler(404)
+def not_found(e):
+    return render_template("404.html"), 404
+
+# ===================================================
+# RUN
+# ===================================================
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

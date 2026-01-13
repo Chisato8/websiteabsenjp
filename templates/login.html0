@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="wrap">
+  <main class="card">
+
+    <!-- LOGO / ICON -->
+    <div class="logo">
+      👁️
+    </div>
+
+    <h2>Halaman Khusus Admin / Guru</h2>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" autocomplete="off">
+      <div class="input-group">
+        <input 
+          type="password" 
+          name="pass" 
+          id="password"
+          placeholder="Password admin" 
+          required
+        >
+        <span class="toggle" onclick="togglePass()">👁</span>
+      </div>
+
+      <button class="btn" type="submit">Login</button>
+    </form>
+
+    <footer class="foot">
+      Dibuat oleh <strong>Riky Ernanto</strong>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+function togglePass() {
+  const p = document.getElementById("password");
+  p.type = p.type === "password" ? "text" : "password";
+}
+</script>
+
+</body>
+</html>
